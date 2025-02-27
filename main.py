@@ -109,26 +109,22 @@ def generate_diagnostic_summary():
     return diagnostic
 
 def save_diagnostic(diagnostic, format="txt"):
-    os.makedirs("diagnostics", exist_ok=True)
-    
     user_name = st.session_state.user_name or "anonymous"
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename_base = f"diagnostics/{user_name}_{timestamp}"
     
     if format == "txt":
-        with open(f"{filename_base}.txt", "w") as f:
-            f.write(f"PSYCHOLOGICAL DIAGNOSTIC SUMMARY\n")
-            f.write(f"Student: {user_name}\n")
-            f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Session ID: {st.session_state.session_id}\n\n")
-            f.write(diagnostic)
+        content = f"PSYCHOLOGICAL DIAGNOSTIC SUMMARY\n"
+        content += f"Student: {user_name}\n"
+        content += f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        content += f"Session ID: {st.session_state.session_id}\n\n"
+        content += diagnostic
+        
+        content += "\n\n--- FULL CONVERSATION LOG ---\n\n"
+        for msg in st.session_state.messages:
+            role = "Student" if msg["role"] == "user" else "AI Counselor"
+            content += f"{role}: {msg['content']}\n\n"
             
-            f.write("\n\n--- FULL CONVERSATION LOG ---\n\n")
-            for msg in st.session_state.messages:
-                role = "Student" if msg["role"] == "user" else "AI Counselor"
-                f.write(f"{role}: {msg['content']}\n\n")
-                
-        return f"{filename_base}.txt"
+        return content.encode('utf-8')
     
     elif format == "pdf":
         pdf = FPDF()
@@ -159,9 +155,7 @@ def save_diagnostic(diagnostic, format="txt"):
             pdf.multi_cell(0, 10, msg["content"])
             pdf.ln(5)
             
-        pdf_path = f"{filename_base}.pdf"
-        pdf.output(pdf_path)
-        return pdf_path
+        return pdf.output(dest='S').encode('latin1')
     
     else:
         return None
@@ -229,26 +223,30 @@ def chat_interface():
                 st.markdown("### Diagnostic Summary")
                 st.markdown(st.session_state.diagnostic)
                 
-                if st.button("Download Summary"):
-                    st.session_state.show_download_options = True
+                download_format = st.radio("Select format:", ["TXT", "PDF"])
                 
-                if 'show_download_options' in st.session_state and st.session_state.show_download_options:
-                    download_format = st.radio("Select format:", ["TXT", "PDF"])
-                    
-                    if st.button("Confirm Download"):
-                        if download_format == "TXT":
-                            file_path = save_diagnostic(st.session_state.diagnostic, format="txt")
-                        else:
-                            file_path = save_diagnostic(st.session_state.diagnostic, format="pdf")
-                        st.success(f"Saved to {file_path}")
-                        st.session_state.show_download_options = False
+                if download_format == "TXT":
+                    file_content = save_diagnostic(st.session_state.diagnostic, format="txt")
+                    st.download_button(
+                        label="Download Summary (TXT)",
+                        data=file_content,
+                        file_name=f"diagnostic_{st.session_state.user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                        mime="text/plain"
+                    )
+                else:
+                    file_content = save_diagnostic(st.session_state.diagnostic, format="pdf")
+                    st.download_button(
+                        label="Download Summary (PDF)",
+                        data=file_content,
+                        file_name=f"diagnostic_{st.session_state.user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                        mime="application/pdf"
+                    )
         
         if st.sidebar.button("End Chat"):
             if len(st.session_state.messages) >= 4 and st.session_state.user_name:
                 if 'diagnostic' not in st.session_state:
                     diagnostic = generate_diagnostic_summary()
-                    save_diagnostic(diagnostic, format="txt")
-                    save_diagnostic(diagnostic, format="pdf")
+                    st.session_state.diagnostic = diagnostic
             reset_chat()
             st.rerun()
 
