@@ -3,7 +3,6 @@ import streamlit as st
 from dotenv import load_dotenv
 from groq import Groq
 from time import time
-import json
 import pandas as pd
 from datetime import datetime
 import pdfkit
