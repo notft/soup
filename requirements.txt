@@ -3,3 +3,5 @@ pandas>=2.2.0
 python-dotenv>=1.0.0
 groq>=0.3.0 
 Pillow>=11.1.0
+fpdf>=1.7.2
+pdfkit==1.0.0
