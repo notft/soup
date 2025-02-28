@@ -22,7 +22,7 @@ Soup's Safe Space is a supportive chat application designed to provide mental he
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/soups-safe-space.git
+   git clone https://github.com/notft/soups-safe-space.git
    cd soups-safe-space
    ```
 
