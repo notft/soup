@@ -1,6 +1,7 @@
 # 🌱 Soup's Safe Space - A Mental Health Support Chat for Students
 
-Soup's Safe Space is a supportive chat application designed to provide mental health assistance to college students. This platform offers a safe, confidential environment where students can express their concerns, receive empathetic guidance, and develop healthy coping strategies.
+Soup's Safe Space is a supportive chat application designed to provide mental health assistance to college students. This platform offers a safe, confidential environment where students can express their concerns, receive empathetic guidance, and develop healthy coping strategies. Dedicated to that little sister I couldnt help when she was alive. 
+Life is not a donation but generations of wealth.
 
 ## 🌟 Features
 

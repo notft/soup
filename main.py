@@ -12,7 +12,15 @@ def initialize_chat():
     if "messages" not in st.session_state:
         st.session_state.messages = []
         st.session_state.chat_started = False
-        st.session_state.user_name = None
+        st.session_state.user_info = {
+            "name": None,
+            "age": None,
+            "gender": None,
+            "parents_status": None,
+            "financial_background": None,
+            "living_situation": None,
+            "academic_year": None
+        }
         st.session_state.session_start = None
         st.session_state.session_id = datetime.now().strftime("%Y%m%d%H%M%S")
         st.session_state.crisis_info_shown = False
@@ -21,7 +29,7 @@ def get_ai_response(prompt, conversation_history, is_diagnostic=False):
     load_dotenv()
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        return "Server error: Api key find!"
+        return "Server error: Api key not found!"
     
     client = Groq(api_key=api_key)
     
@@ -31,6 +39,15 @@ def get_ai_response(prompt, conversation_history, is_diagnostic=False):
         
         The student has been sharing their concerns gradually throughout the conversation. 
         Review the entire conversation history to identify patterns and issues rather than focusing only on explicitly stated problems.
+        
+        You have the following background information about the student:
+        - Name: {name}
+        - Age: {age}
+        - Gender: {gender}
+        - Parents Status: {parents_status}
+        - Financial Background: {financial_background}
+        - Living Situation: {living_situation}
+        - Academic Year: {academic_year}
         
         Analyze the conversation and provide:
         1. Main concerns or issues presented (include both explicit and implicit concerns)
@@ -43,7 +60,19 @@ def get_ai_response(prompt, conversation_history, is_diagnostic=False):
         Format your response in a professional clinical summary style suitable for a college counselor.
         Be objective, thorough, and focused on patterns rather than isolated statements.
         Include only factual observations from the conversation, not speculations.
+        Consider how the student's background information might relate to their current concerns.
         """
+        
+        # Format system prompt with user info
+        system_prompt = system_prompt.format(
+            name=st.session_state.user_info["name"] or "Unknown",
+            age=st.session_state.user_info["age"] or "Unknown",
+            gender=st.session_state.user_info["gender"] or "Unknown",
+            parents_status=st.session_state.user_info["parents_status"] or "Unknown",
+            financial_background=st.session_state.user_info["financial_background"] or "Unknown",
+            living_situation=st.session_state.user_info["living_situation"] or "Unknown",
+            academic_year=st.session_state.user_info["academic_year"] or "Unknown"
+        )
     else:
         system_prompt = """You are an empathetic and supportive counselor for college students.
         Your responses should be:
@@ -51,6 +80,15 @@ def get_ai_response(prompt, conversation_history, is_diagnostic=False):
         2. Encouraging but realistic
         3. Focused on helping students develop healthy coping strategies
         4. Clear about your role as an AI support tool, not a replacement for professional help
+
+        You have the following background information about the student:
+        - Name: {name}
+        - Age: {age}
+        - Gender: {gender}
+        - Parents Status: {parents_status}
+        - Financial Background: {financial_background}
+        - Living Situation: {living_situation}
+        - Academic Year: {academic_year}
 
         IMPORTANT: Only mention crisis resources when you detect serious mental health concerns. 
         Do not mention these resources in every message. Use your judgment to determine when a student 
@@ -67,6 +105,17 @@ def get_ai_response(prompt, conversation_history, is_diagnostic=False):
         Keep your responses concise and focused on the immediate concern while remembering the 
         conversation context.
         """
+        
+        # Format system prompt with user info
+        system_prompt = system_prompt.format(
+            name=st.session_state.user_info["name"] or "Unknown",
+            age=st.session_state.user_info["age"] or "Unknown",
+            gender=st.session_state.user_info["gender"] or "Unknown",
+            parents_status=st.session_state.user_info["parents_status"] or "Unknown",
+            financial_background=st.session_state.user_info["financial_background"] or "Unknown",
+            living_situation=st.session_state.user_info["living_situation"] or "Unknown",
+            academic_year=st.session_state.user_info["academic_year"] or "Unknown"
+        )
     
     try:
         if not is_diagnostic and not st.session_state.crisis_info_shown:
@@ -109,7 +158,7 @@ def generate_diagnostic_summary():
     return diagnostic
 
 def save_diagnostic(diagnostic, format="txt"):
-    user_name = st.session_state.user_name or "anonymous"
+    user_name = st.session_state.user_info["name"] or "anonymous"
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     if format == "txt":
@@ -117,6 +166,14 @@ def save_diagnostic(diagnostic, format="txt"):
         content += f"Student: {user_name}\n"
         content += f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         content += f"Session ID: {st.session_state.session_id}\n\n"
+        
+        # Add user information section
+        content += "--- STUDENT INFORMATION ---\n"
+        for key, value in st.session_state.user_info.items():
+            formatted_key = key.replace('_', ' ').title()
+            content += f"{formatted_key}: {value or 'Not provided'}\n"
+        content += "\n"
+        
         content += diagnostic
         
         content += "\n\n--- FULL CONVERSATION LOG ---\n\n"
@@ -135,7 +192,20 @@ def save_diagnostic(diagnostic, format="txt"):
         pdf.cell(0, 10, f"Student: {user_name}", ln=True)
         pdf.cell(0, 10, f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
         pdf.cell(0, 10, f"Session ID: {st.session_state.session_id}", ln=True)
+        pdf.ln(5)
+        
+        # Add student information section
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "STUDENT INFORMATION", ln=True)
+        pdf.set_font("Arial", size=10)
+        for key, value in st.session_state.user_info.items():
+            formatted_key = key.replace('_', ' ').title()
+            pdf.cell(0, 10, f"{formatted_key}: {value or 'Not provided'}", ln=True)
         pdf.ln(10)
+        
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "DIAGNOSTIC SUMMARY", ln=True)
+        pdf.ln(5)
         pdf.set_font("Arial", size=10)
         
         for line in diagnostic.split('\n'):
@@ -169,19 +239,38 @@ def chat_interface():
         Welcome to Soup's Space! This is a safe space where you can talk out, laugh out or cry out. 
         
         While I'm here to listen and support you, remember that I'm an AI assistant.
-        For serious concerns, please reach out to professional counselors or mental health services whos always ready to help you :)
+        For serious concerns, please reach out to professional counselors or mental health services who are always ready to help you :)
+        
+        Please fill in the following information to help us understand you better. This will help us provide more personalized support.
         """)
         
-        user_name = st.text_input("What would you like me to call you?")
-        if user_name and st.button("Start Chatting"):
-            st.session_state.user_name = user_name
-            st.session_state.chat_started = True
-            st.session_state.session_start = time()
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": f"Hi {user_name}, I'm here to listen and support you. What's on your mind today?"
-            })
-            st.rerun()
+        # Create a form for user information
+        with st.form("user_info_form"):
+            st.session_state.user_info["name"] = st.text_input("What would you like me to call you?")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.session_state.user_info["age"] = st.number_input("Age", min_value=16, max_value=100, step=1)
+                st.session_state.user_info["gender"] = st.selectbox("Gender", ["", "Male", "Female", "Non-binary", "Prefer not to say", "Other"])
+                st.session_state.user_info["parents_status"] = st.selectbox("Parents Status", ["", "Married", "Divorced", "Separated", "Single Parent", "Guardian(s)", "Deceased", "Other"])
+            
+            with col2:
+                st.session_state.user_info["financial_background"] = st.selectbox("Financial Background", ["", "Low Income", "Middle Income", "High Income", "Scholarship Student", "Student Loans", "Self-Supporting", "Prefer not to say"])
+                st.session_state.user_info["living_situation"] = st.selectbox("Living Situation", ["", "On-campus", "Off-campus with roommates", "Off-campus alone", "With family", "Other"])
+                st.session_state.user_info["academic_year"] = st.selectbox("Academic Year", ["", "Freshman", "Sophomore", "Junior", "Senior", "Graduate Student", "Other"])
+            
+            submit_button = st.form_submit_button("Start Chatting")
+            
+            if submit_button and st.session_state.user_info["name"]:
+                st.session_state.chat_started = True
+                st.session_state.session_start = time()
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": f"Hi {st.session_state.user_info['name']}, I'm here to listen and support you. What's on your mind today?"
+                })
+                st.rerun()
+            elif submit_button and not st.session_state.user_info["name"]:
+                st.error("Please provide a name to continue.")
     
     else:
         for message in st.session_state.messages:
@@ -223,6 +312,14 @@ def chat_interface():
                 st.markdown("### Diagnostic Summary")
                 st.markdown(st.session_state.diagnostic)
                 
+                # User info display in sidebar
+                st.markdown("### User Information")
+                user_info_text = ""
+                for key, value in st.session_state.user_info.items():
+                    formatted_key = key.replace('_', ' ').title()
+                    user_info_text += f"**{formatted_key}:** {value or 'Not provided'}\n"
+                st.markdown(user_info_text)
+                
                 download_format = st.radio("Select format:", ["TXT", "PDF"])
                 
                 if download_format == "TXT":
@@ -230,7 +327,7 @@ def chat_interface():
                     st.download_button(
                         label="Download Summary (TXT)",
                         data=file_content,
-                        file_name=f"diagnostic_{st.session_state.user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                        file_name=f"diagnostic_{st.session_state.user_info['name']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                         mime="text/plain"
                     )
                 else:
@@ -238,12 +335,12 @@ def chat_interface():
                     st.download_button(
                         label="Download Summary (PDF)",
                         data=file_content,
-                        file_name=f"diagnostic_{st.session_state.user_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                        file_name=f"diagnostic_{st.session_state.user_info['name']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
                         mime="application/pdf"
                     )
         
         if st.sidebar.button("End Chat"):
-            if len(st.session_state.messages) >= 4 and st.session_state.user_name:
+            if len(st.session_state.messages) >= 4 and st.session_state.user_info["name"]:
                 if 'diagnostic' not in st.session_state:
                     diagnostic = generate_diagnostic_summary()
                     st.session_state.diagnostic = diagnostic
